@@ -5,6 +5,9 @@
 #include <memory>
 #include <v8.h>
 #include <node.h>
+#include <winsock2.h> // Add this line
+
+#pragma comment(lib, "Ws2_32.lib") // Add this line
 
 // #include <unistd.h>
 // void Debug(const char *msg) {
@@ -29,9 +32,17 @@ Sandbox::Sandbox()
     pipe_(nullptr),
     loop_(nullptr)
 {
+  // Initialize Winsock
+  WSADATA wsaData;
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    std::cerr << "WSAStartup failed: " << result << std::endl;
+  }
 }
 
 Sandbox::~Sandbox() {
+  // Cleanup Winsock
+  WSACleanup();
 }
 
 void Sandbox::Init(v8::Local<v8::Object> exports) {
@@ -481,7 +492,7 @@ void Sandbox::WriteData(uv_stream_t *pipe, int messageId, int callbackId, std::s
   memcpy(&base[3], message.c_str(), messageLength);
 
   uv_buf_t buffers[] = {
-    { .base = data, .len = bufferLength }
+    uv_buf_init((char*)data, bufferLength)
   };
 
   write->data = data;
